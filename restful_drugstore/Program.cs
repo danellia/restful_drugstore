@@ -1,18 +1,25 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using MongoDB.Driver;
 using restful_drugstore.Data;
+using restful_drugstore.Models;
+using restful_drugstore.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
-builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+builder.Services.Configure<DatabaseSettings>(
+    builder.Configuration.GetSection(nameof(DatabaseSettings)));
 
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
-    .AddEntityFrameworkStores<ApplicationDbContext>();
-builder.Services.AddControllersWithViews();
+builder.Services.AddSingleton<IDatabaseSettings>(sp =>
+    sp.GetRequiredService<IOptions<DatabaseSettings>>().Value);
+
+builder.Services.AddSingleton<IMongoClient>(s =>
+    new MongoClient(builder.Configuration.GetValue<string>("DatabaseSettings:ConnectionString"));
+
+builder.Services.AddScoped<IService, WarehouseService>();
 
 var app = builder.Build();
 
